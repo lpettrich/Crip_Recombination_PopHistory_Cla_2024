@@ -41,3 +41,17 @@
         --taxrule bestsumorder \
         --cov /schluppsi/MF1.bwamem.sort.q30.rmd.bam \
         /outolino/
+
+
+    # metadata
+    nano Chironomus_riparius_genome_010921.yaml
+
+    assembly:
+      alias: Chironomus_riparius_genome_010921
+      record_type: chromosome
+    taxon:
+      name: Chironomus riparius
+
+
+    # View blobplot
+    singularity exec -B /scratch/lpettric/blobtools/CRIP/:/schluppsi -B /scratch/lpettric/blobtools/CRIP/output/output-view:/outolino /opt/rrzk/software/singularity_images/blobtoolkit_latest.sif blobtools view --remote --out /outolino/output --view blob /schluppsi/output
