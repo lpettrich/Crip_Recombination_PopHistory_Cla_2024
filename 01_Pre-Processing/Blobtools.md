@@ -1,3 +1,19 @@
+### Fetch Databases
+
+Fetch the NCBI Taxdump
+
+    mkdir -p taxdump; cd taxdump; curl -L ftp://ftp.ncbi.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz | tar xzf -; cd ..;
+
+Fetch the nt database
+
+    mkdir -p nt wget
+    "<ftp://ftp.ncbi.nlm.nih.gov/blast/db/nt>.??.tar.gz" -P nt/ &&\
+    for file in nt/\*.tar.gz;\
+    do tar xf \$file -C nt && rm \$file;\
+    done
+
+Fetch any BUSCO lineages that you plan to use
+
 ### BUSCO
 
     # Download BUSCO for offline usage
@@ -26,6 +42,7 @@
            -out /scratch/lpettric/blobtools/CRIP/Chironomus_riparius_genome_010921.ncbi.blastn.run.out
 
 ### Blobtools
+
 
     # taxid
     --taxid 315576
