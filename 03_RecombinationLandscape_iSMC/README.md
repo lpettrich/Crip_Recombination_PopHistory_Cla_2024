@@ -1,1 +1,1 @@
-Scripts were based on previous script of: 
+Scripts were based on previous script by: 
