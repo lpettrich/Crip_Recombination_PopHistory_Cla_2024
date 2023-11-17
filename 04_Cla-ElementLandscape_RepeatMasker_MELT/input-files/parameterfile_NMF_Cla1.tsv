@@ -1,0 +1,5 @@
+# sample        mei     bamfile reference       meifile readlength      insertsize	coverage
+NMF1	Cla1	/projects/ag-waldvogel/pophistory/CRIP/bam-files/samblaster/NMF1.bwamem.sambl.sort.bam	/projects/ag-waldvogel/genomes/CRIP/crip4.0/Chironomus_riparius_genome_010921.fasta	/projects/ag-waldvogel/pophistory/CRIP/MELT-analysis/Cla1_MELT.zip	136	291	26
+NMF2	Cla1	/projects/ag-waldvogel/pophistory/CRIP/bam-files/samblaster/NMF2.bwamem.sambl.sort.bam	/projects/ag-waldvogel/genomes/CRIP/crip4.0/Chironomus_riparius_genome_010921.fasta	/projects/ag-waldvogel/pophistory/CRIP/MELT-analysis/Cla1_MELT.zip	137	279	22
+NMF3	Cla1	/projects/ag-waldvogel/pophistory/CRIP/bam-files/samblaster/NMF3.bwamem.sambl.sort.bam	/projects/ag-waldvogel/genomes/CRIP/crip4.0/Chironomus_riparius_genome_010921.fasta	/projects/ag-waldvogel/pophistory/CRIP/MELT-analysis/Cla1_MELT.zip	136	272	20
+NMF4	Cla1	/projects/ag-waldvogel/pophistory/CRIP/bam-files/samblaster/NMF4.bwamem.sambl.sort.bam	/projects/ag-waldvogel/genomes/CRIP/crip4.0/Chironomus_riparius_genome_010921.fasta	/projects/ag-waldvogel/pophistory/CRIP/MELT-analysis/Cla1_MELT.zip	136	276	18
