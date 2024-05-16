@@ -1,6 +1,3 @@
-
-
-
 # Clean environment
 rm(list = ls())
 
@@ -16,17 +13,15 @@ rm(list = ls())
  library(rgdal)
  library(raster)
  library(scales)
-#library(svglite)
  library(ggpubr)
  library(egg)
  library(cowplot)
-#library(colorspace)
  library(gridGraphics)
  library(grid)
  library(tidyverse)
 
 # Set directory
-setwd("~/sciebo/MasterThesis/final-plots/")
+setwd("~/sciebo/final-plots/")
 getwd()
 
 #-------------------------------------------------------------------------------------------------------------
