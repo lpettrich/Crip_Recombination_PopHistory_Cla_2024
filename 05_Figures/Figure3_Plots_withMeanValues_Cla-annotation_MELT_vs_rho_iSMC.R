@@ -13,10 +13,8 @@ invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, cha
 # Load libraries
 library(tidyverse)
 library(dplyr)
-#library(chromoMap)
 library(scales)
 library(ggplot2)
-#library(conflicted)
 library(patchwork)
 library(cowplot)
 library(grid)
