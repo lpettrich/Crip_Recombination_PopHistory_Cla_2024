@@ -8,11 +8,9 @@
 ## Clean environment
 rm(list = ls())
 
-#3 Load libraries
+# Load libraries
 library(tidyverse)
 library(dplyr)
-#library(chromoMap)
-#library(scales)
 library(ggplot2)
 
 # Set directory
