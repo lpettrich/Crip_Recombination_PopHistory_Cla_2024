@@ -11,8 +11,6 @@ rm(list = ls())
 # Load libraries
 library(tidyverse)
 library(dplyr)
-#library(chromoMap)
-#library(scales)
 library(ggplot2)
 
 # Set directory
