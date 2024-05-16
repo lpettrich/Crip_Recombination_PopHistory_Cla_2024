@@ -11,8 +11,6 @@ rm(list = ls())
 # Load libraries
 library(tidyverse)
 library(dplyr)
-#library(chromoMap)
-#library(scales)
 library(ggplot2)
 
 # Set directory
@@ -351,7 +349,7 @@ dfm_mean %>%
 
 
 
-# we set it to 20,000,000
+# we set it to 7,000,000
 # approx. length of chromosome 4
 max_dist=7e6
 dfm_mean <- dfm_mean %>% 
@@ -367,7 +365,7 @@ boxplot(dfm_mean$mean_dist_to_Cla)
 ###############################################################################
 #Test with several populations
 ###############################################################################
-#max_dist <- further up
+#max_dist <- 7e6
 #window_size <- 10e3
 
 # Generate bins according to max-dist and window size
