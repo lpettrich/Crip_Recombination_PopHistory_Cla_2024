@@ -351,7 +351,6 @@ dfm_mean %>%
 
 
 # we set it to 7,000,000
-# approx. length of chromosome 4
 max_dist=7e6
 dfm_mean <- dfm_mean %>% 
   filter(mean_dist_to_Cla <= max_dist)
