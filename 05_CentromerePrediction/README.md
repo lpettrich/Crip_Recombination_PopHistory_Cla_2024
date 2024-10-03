@@ -1,1 +1,1 @@
-Centromeres were predicted using RepeatOBserver.
+Centromeres were predicted using [RepeatOBserver](https://github.com/celphin/RepeatOBserverV1).
