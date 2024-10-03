@@ -17,10 +17,20 @@ Fetch any BUSCO lineages that you plan to use
 ### BUSCO
 
     # Download BUSCO for offline usage
-    wget -q -O diptera_odb10.gz "https://busco-data.ezlab.org/v4/data/lineages/diptera_odb10.2020-08-05.tar.gz" \
-           && tar xf diptera_odb10.gz 
+    wget -q -O insecta_odb10.gz "https://busco-data.ezlab.org/v4/data/lineages/insecta_odb10.2020-09-10.tar.gz" \
+           && tar xf insecta_odb10.gz 
 
-    singularity exec -B /scratch/lpettric/blobtools/CRIP/:/busco_wd/ -B /scratch/lpettric/busco_downloads/:/busco/ /scratch/lpettric/singularity/busco_v5.3.2_cv1.sif busco -m genome -i /busco_wd/Chironomus_riparius_genome_010921.fasta -o /busco_wd/CRIP/Chironomus_riparius_genome_010921.busco.diptera_odb10.tsv -l diptera_odb10 -f --offline --download_path /busco/
+    singularity exec --home /scratch/lpettric:/home \
+                 -B /scratch/lpettric/blobtools/CRIP/:/busco_wd/ \
+                 -B /scratch/lpettric/busco_downloads/:/busco/ \
+                 -B /scratch/lpettric/singularity/augustus_config/:/augustus \
+                 /scratch/lpettric/singularity/busco_v5.7.1_cv1.sif \
+                 bash -c "export AUGUSTUS_CONFIG_PATH=/augustus/ && \
+                 busco -m genome -i /busco_wd/Chironomus_riparius_genome_010921.fasta \
+                       -o /busco_wd/Chironomus_riparius_genome_010921.busco.v5.7.1.insecta_odb10-AUGUSTUSlong.tsv \
+                       -l insecta_odb10 \
+                       -f --offline --download_path /busco/ \
+                       --augustus --long"
 
 ### Blastx
 
