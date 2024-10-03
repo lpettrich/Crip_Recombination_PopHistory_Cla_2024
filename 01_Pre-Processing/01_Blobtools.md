@@ -62,7 +62,7 @@ Fetch any BUSCO lineages that you plan to use
         --fasta /schluppsi/Chironomus_riparius_genome_010921.fasta \
         --meta /schluppsi/Chironomus_riparius_genome_010921.yaml \
         --hits /schluppsi/Chironomus_riparius_genome_010921.ncbi.blastn.run.out \
-        --busco /schluppsi/Chironomus_riparius_genome_010921.busco.diptera_odb10.tsv/run_diptera_odb10/full_table.tsv \
+        --busco /schluppsi/Chironomus_riparius_genome_010921.busco.insecta_odb10.tsv/run_insecta_odb10/full_table.tsv \
         --taxid 315576 \
         --taxdump /taxdumpi \
         --taxrule bestsumorder \
