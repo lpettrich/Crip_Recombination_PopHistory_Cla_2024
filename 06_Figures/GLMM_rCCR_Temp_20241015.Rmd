@@ -1,0 +1,1114 @@
+---
+title: "GLMM rCCR vs. tempertaure"
+author: "Laura Pettrich"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Set up Packages
+
+```{r}
+# Clean environment
+rm(list = ls())
+
+# Load libraries
+library(tidyverse)
+library(lme4)    # For mixed-effects modeling
+library(lmerTest) # For p-values and significance testing
+library(raster)
+library(scales)
+library(reshape2)
+library(broom.mixed)
+library(glmmTMB)
+library(DHARMa)
+library(mgcv)
+
+# Set directory
+setwd("~/sciebo/RecombinationLandscape_CRIP/01_Revison/NewResults/")
+getwd()
+```
+
+Read in relevant data
+
+```{r}
+############
+# 1. MSMC2 #
+############
+# B) CROSS-COALESCENCE RATE
+#---------------------------
+# Read in data
+# Combined Cross-Coalescence
+mfmg <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MF1-MG5_msmc2.final.txt", header = TRUE)
+mfnmf <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MF1-NMF4_msmc2.final.txt", header = TRUE)
+mfsi <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MF1-SI4_msmc2.final.txt", header = TRUE)
+mfss <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MF1-SS4_msmc2.final.txt", header = TRUE)
+mgnmf <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MG2-NMF4_msmc2.final.txt", header = TRUE)
+mgsi <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MG2-SI4_msmc2.final.txt", header = TRUE)
+mgss <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_MG2-SS4_msmc2.final.txt", header = TRUE)
+nmfsi <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_NMF1-SI4_msmc2.final.txt", header = TRUE)
+nmfss <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_NMF1-SS4_msmc2.final.txt", header = TRUE)
+siss <- read.table("~/sciebo/RecombinationLandscape_CRIP/01_Revison/Sorted_final_files/Final_Supplement/Zenodo/MSMC2/combined_SI1-SS4_msmc2.final.txt", header = TRUE)
+
+
+# determine mutation rate and generation time
+mu <- 4.27*10^-9    #from Waldvogel & Pfenninger 2021; mutation rate
+gen_mf <- 1/9.07    # generation time = time/generations
+gen_mg <-  1/7.85 
+gen_nmf <- 1/7.7
+gen_si <- 1/10.57
+gen_ss <- 1/14.86
+
+# to get relative gene flow, you can compute the relative cross-coalescence rate: 2 * lambda01 / (lambda00 + lambda11)
+
+str(mfmg)
+mfmg <- mfmg %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mfnmf <- mfnmf %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mfsi <- mfsi %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mfss <- mfss %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mgnmf <- mgnmf %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mgsi <- mgsi %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+mgss <- mgss %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+nmfsi <- nmfsi %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+nmfss <- nmfss %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+siss <- siss %>% 
+  mutate(rel.cc = (2*lambda_01)/(lambda_00+lambda_11))
+
+
+
+# add column with pop.size, generations and years
+mfmg <- mfmg %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),    # generations ago
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mf+gen_mg)/2)))   # multiple by generation time to get years
+
+mfnmf <- mfnmf %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),    
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mf+gen_nmf)/2)))   
+
+mfsi <- mfsi %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),    
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mf+gen_si)/2)))   
+
+mfss <- mfss %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),    
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mf+gen_ss)/2)))   
+
+mgnmf <- mgnmf %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mg+gen_nmf)/2)))
+
+mgsi <- mgsi %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mg+gen_si)/2)))
+
+mgss <- mgss %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_mg+gen_ss)/2)))
+
+nmfsi <- nmfsi %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_nmf+gen_si)/2)))
+
+nmfss <- nmfss %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_nmf+gen_ss)/2)))
+
+siss <- siss %>% 
+  mutate(generations = (((left_time_boundary+right_time_boundary)/2)/mu),
+         years = (((left_time_boundary+right_time_boundary)/2)/mu*((gen_si+gen_ss)/2)))
+
+
+
+# remove outliers in data
+mfmg <- mfmg[6:31,]
+mfnmf <- mfnmf[6:31,]
+mfsi <- mfsi[6:31,]
+mfss <- mfss[6:31,]
+mgnmf <- mgnmf[6:31,]
+mgsi <- mgsi[6:31,]
+mgss <- mgss[6:31,]
+nmfsi <- nmfsi[6:31,]
+nmfss <- nmfss[6:31,]
+siss <- siss[6:31,]
+
+# merge data frames
+mdata <- rbind(mfmg,mfnmf,mfsi,mfss,mgnmf,mgsi,mgss,nmfsi,nmfss,siss)
+
+# add column with population names
+mdata <- data.frame(mdata,Population = rep(c("MF-MG","MF-NMF","MF-SI","MF-SS",
+                                             "MG-NMF","MG-SI","MG-SS",
+                                             "NMF-SI","NMF-SS","SI-SS"),
+                                           times=c(nrow(mfmg),nrow(mfnmf),nrow(mfsi),nrow(mfss),nrow(mgnmf),nrow(mgsi),nrow(mgss),
+                                                   nrow(nmfsi),nrow(nmfss),nrow(siss))))
+
+
+head(mdata)
+
+# Check data 
+ggplot(mdata, aes(x = years, y = rel.cc, colour = Population)) + 
+  geom_step(size=0.75)  +
+  scale_x_continuous(limits=c(10^2,10^6), trans="log10") +
+  scale_y_continuous(limits = c(0,1.2), breaks = c(0, 0.5, 1)) +
+  labs(x = "Years ago", y = "Relative \ncross-coalescence \nrate") + 
+  guides(color = guide_legend(nrow = 2, byrow = FALSE, title= "Population\npair"))
+
+#-------------------------------------------------------------------------------------------------------------
+###########################
+# 2. CHELSA CLIMATE MODEL #
+###########################
+# It's better to use annual mean temperature https://chelsa-climate.org/chelsa-trace21k/
+# bio1 = Annual Mean Temperature [°C]
+# kBP 1-22
+# Read in tif 
+setwd("~/Documents/03_Master/Thesis/ClimateData/CHELSA/bio1") #linux computer
+
+rlist=list.files(getwd(), pattern=".tif", full.names=FALSE)
+for(i in rlist) { assign(unlist(strsplit(i, "[.]"))[1], raster(i)) } 
+
+kBP1 <- raster("CHELSA_TraCE21k_bio01_10_V1.0.tif")
+kBP2 <- raster("CHELSA_TraCE21k_bio01_0_V1.0.tif")
+kBP3 <- raster("CHELSA_TraCE21k_bio01_-10_V1.0.tif")
+kBP4 <- raster("CHELSA_TraCE21k_bio01_-20_V1.0.tif")
+kBP5 <- raster("CHELSA_TraCE21k_bio01_-30_V1.0.tif")
+kBP6 <- raster("CHELSA_TraCE21k_bio01_-40_V1.0.tif")
+kBP7 <- raster("CHELSA_TraCE21k_bio01_-50_V1.0.tif")
+kBP8 <- raster("CHELSA_TraCE21k_bio01_-60_V1.0.tif")
+kBP9 <- raster("CHELSA_TraCE21k_bio01_-70_V1.0.tif")
+kBP10 <- raster("CHELSA_TraCE21k_bio01_-80_V1.0.tif")
+kBP11 <- raster("CHELSA_TraCE21k_bio01_-90_V1.0.tif")
+kBP12 <- raster("CHELSA_TraCE21k_bio01_-100_V1.0.tif")
+kBP13 <- raster("CHELSA_TraCE21k_bio01_-110_V1.0.tif")
+kBP14 <- raster("CHELSA_TraCE21k_bio01_-120_V1.0.tif")
+kBP15 <- raster("CHELSA_TraCE21k_bio01_-130_V1.0.tif")
+kBP16 <- raster("CHELSA_TraCE21k_bio01_-140_V1.0.tif")
+kBP17 <- raster("CHELSA_TraCE21k_bio01_-150_V1.0.tif")
+kBP18 <- raster("CHELSA_TraCE21k_bio01_-160_V1.0.tif")
+kBP19 <- raster("CHELSA_TraCE21k_bio01_-170_V1.0.tif")
+kBP20 <- raster("CHELSA_TraCE21k_bio01_-180_V1.0.tif")
+kBP21 <- raster("CHELSA_TraCE21k_bio01_-190_V1.0.tif")
+kBP22 <- raster("CHELSA_TraCE21k_bio01_-200_V1.0.tif")
+
+# Create a data.frame with sample site coordinates
+site <- c("MG","NMF", "MF", "SI", "SS")
+lon <- c(9.0819270 , 6.2156670, 4.8865000 , 8.3473320, -4.5267980)
+lat <- c(50.1680610, 49.1765430, 45.8616760, 45.4036180, 37.399080)
+samples <- data.frame(site, lon, lat, row.names="site")
+samples
+
+# Extract data from tif for your sites
+ID <- seq(-200, 10, by=10)
+d <- c(paste("CHELSA_TraCE21k_bio01_", ID, "_V1", sep = ""))
+
+
+temp.data <- samples 
+temp.data$kBP1 <- raster::extract(kBP1, samples) # 1kBP
+temp.data$kBP2 <- raster::extract(kBP2, samples)  # 2kBP
+temp.data$kBP3 <- raster::extract(kBP3, samples) # 3kBP
+temp.data$kBP4 <- raster::extract(kBP4, samples) # 4kBP
+temp.data$kBP5 <- raster::extract(kBP5, samples) # 5kBP
+temp.data$kBP6 <- raster::extract(kBP6, samples) # 6kBP
+temp.data$kBP7 <- raster::extract(kBP7, samples) # 7kBP
+temp.data$kBP8 <- raster::extract(kBP8, samples) # 8kBP
+temp.data$kBP9 <- raster::extract(kBP9, samples) # 9kBP
+temp.data$kBP10 <- raster::extract(kBP10, samples) # 10kBP
+temp.data$kBP11 <- raster::extract(kBP11, samples) # 11kBP
+temp.data$kBP12 <- raster::extract(kBP12, samples) # 12kBP
+temp.data$kBP13 <- raster::extract(kBP13, samples) # 13kBP
+temp.data$kBP14 <- raster::extract(kBP14, samples) # 14kBP
+temp.data$kBP15 <- raster::extract(kBP15, samples) # 15kBP
+temp.data$kBP16 <- raster::extract(kBP16, samples) # 16kBP
+temp.data$kBP17 <- raster::extract(kBP17, samples) # 17kBP
+temp.data$kBP18 <- raster::extract(kBP18, samples) # 18kBP
+temp.data$kBP19 <- raster::extract(kBP19, samples) # 19kBP
+temp.data$kBP20 <- raster::extract(kBP20, samples) # 20kBP
+temp.data$kBP21 <- raster::extract(kBP21, samples) # 21kBP
+temp.data$kBP22 <- raster::extract(kBP22, samples) # 22kBP
+
+#fix("temp.data")
+
+# new data fram with only temperature
+temp <- as.data.frame(t(temp.data[,-c(1:2)]))
+temp$kBP <- c(1:22)
+
+
+d <- melt(temp, id.vars="kBP")
+
+d$variable <- factor(d$variable ,                 # Relevel group factor
+                     levels = c("MG", "NMF", "MF", "SI", "SS"))
+
+d$kBPtrans <- d$kBP*1000 # Transform kBP to BP
+
+str(d)
+temperature_data <- d %>%
+  rename(
+    Population = variable,
+    temperature = value,
+    time = kBPtrans 
+  )
+
+
+head(temperature_data)
+```
+
+Interpolate missing data
+
+```{r}
+########################################
+# 3. INTERPOLATE rCCR                  #
+########################################
+# time point for temperature and rCCR  are different
+# I need to interpolate the more frequent  values (rCCR ) to fit to the less frequent (temperature)
+full_time_sequence <- data.frame(
+  time = seq(1000, 22000, by = 1000)  # 1000-year intervals
+)
+
+# Rename mean years to time
+head(mdata)
+colnames(mdata)[colnames(mdata) == "years"] <- "time"
+
+
+
+library(zoo)
+
+# Perform interpolation within each location
+interpolated_data <- mdata %>%
+  group_by(Population) %>%
+  complete(time = seq(1000, 22000, by = 1000)) %>%  # Ensure complete time sequence per location
+  arrange(Population, time) %>%                      # Arrange by location and time
+  mutate(
+    interpolated = is.na(rel.cc), # Flag the interpolated values (NA before interpolation)
+    rel.cc = zoo::na.approx(rel.cc, na.rm = FALSE)) %>%  # Interpolate rel.cc
+  ungroup()
+
+# View the interpolated data
+head(interpolated_data)
+
+interpolated_data <- interpolated_data %>%
+  dplyr::select(
+    Population, time, time_index, rel.cc, interpolated
+  )
+
+# Inspect data
+scientific_10 <- function(x) {   parse(text=gsub("e\\+*", " %*% 10^", 
+                                                 scales::scientific_format()(x))) }
+
+# original data
+ggplot(mdata, aes(x = time, y = rel.cc, colour = Population)) + 
+  geom_step(size=0.75)  +
+  scale_x_continuous(limits=c(10^2,10^6), trans="log10", labels = scientific_10) +
+  scale_y_continuous(labels = comma) 
+
+# interpolated data
+ggplot(interpolated_data, aes(x = time, y = rel.cc, color = Population)) +
+  geom_step(size=0.75) +
+  geom_point(data = mdata, aes(x = time, y = rel.cc), size = 2) +
+  geom_point(data = interpolated_data %>% filter(interpolated == TRUE), 
+             aes(x = time, y = rel.cc), color = "red", size = 2) +
+  #xlim(0, 22000) +
+  labs(title = "Interpolated rCCR Over Time by Location",
+       x = "Time (years ago)",
+       y = "Ne") +
+  scale_x_continuous(limits=c(10^2,10^6), trans="log10", labels = scientific_10) +
+  scale_y_continuous(labels = comma) 
+```
+
+Merge data frames
+
+```{r}
+########################################
+# 3. MERGE DATAFRAMES                  #
+########################################
+# Should have columns
+#  time for the time points 
+#  rel.cc
+#  temperature for temperature value
+#  location for population location
+
+# structure of dataframe needs to change, so that populations can be distinguished
+interpolated_data <- interpolated_data %>%
+  mutate(PopulationPair = Population)  # Create a new PopulationPair column
+
+interpolated_data <- interpolated_data %>%  
+  separate(Population, into = c("Population1", "Population2"), sep = "-") %>%  # Split Population into two populations
+  pivot_longer(cols = c(Population1, Population2), names_to = "PopTag", values_to = "Population") 
+
+
+interpolated_data <- interpolated_data %>%
+  dplyr::select(PopulationPair, time, time_index, rel.cc, interpolated, Population)  # Keep PopulationPair and relevant columns
+
+# View the resulting dataframe
+print(interpolated_data)
+
+
+# join with temperature
+data <- left_join(interpolated_data, temperature_data, by = c("Population", "time"))
+
+head(data)
+
+# Select 1000 to 22000 years
+data <- data %>%
+  filter(time >= 1000) %>%
+  filter(time <= 22000) %>%
+  mutate(
+    time = (time) # *(-1)) - mean(time*(-1))) / sd(time*(-1))  # Center and scale, years go into past so they should be negative
+  )
+  #drop_na(temperature)
+
+
+head(data)
+setwd("~/sciebo/RecombinationLandscape_CRIP/01_Revison/NewResults/")
+write.table(data, file = "rCCR_interpolated_temperature_combined.csv", sep = ",")
+
+# every population pair has now two temperature values per time point
+```
+
+Generalized Linear Mixed Model (GLMM)
+
+```{r}
+###########################################
+# 4. Generalized Linear Mixed Model (GLMM)#
+###########################################
+#----------------
+
+# Fit different GLMMs with appropriate family based on data type
+m_beta <- glmmTMB(rel.cc ~ temperature + time + (1 | PopulationPair), 
+                  data = data, family = beta_family())
+
+m_beta2 <- glmmTMB(rel.cc ~ temperature * time + (1 | PopulationPair), 
+                  data = data, family = beta_family())
+
+m_beta3 <- glmmTMB(rel.cc ~ temperature + (1 | PopulationPair), 
+                  data = data, family = beta_family())
+
+# Compare models based on AIC
+aic_values <- data.frame(
+  Model = c("m_beta", "m_beta2", "m_beta3"),
+  AIC = c(AIC(m_beta), AIC(m_beta2), AIC(m_beta3))
+)
+
+# Print AIC values to determine the best model
+print(aic_values)
+
+# Identify the best model based on AIC
+best_model <- aic_values[which.min(aic_values$AIC), ]
+print(paste("The best model is:", best_model$Model, "with AIC:", best_model$AIC))
+
+# Residual diagnostics for best model 
+par(mfrow = c(1,2))  # Set up plot grid
+
+# Plot residuals for Poisson model
+residuals_best <- residuals(m_beta2, type = "pearson")
+plot(residuals_best ~ fitted(m_beta2 ), 
+     main = "Pearson Residuals vs Fitted (Beta)", xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+# Q-Q plot for residuals
+qqnorm(residuals_best)
+qqline(residuals_best, col = "red")
+
+
+# Summarize the best model (for example, if m_neg_binom is the best)
+summary(m_beta2)
+
+
+# Tidy the model output for a cleaner view of fixed and random effects
+tidy_model <- tidy(m_beta2)
+print(tidy_model)
+
+
+simulationOutput <- simulateResiduals(fittedModel = m_beta2, use.u = T)
+plot(simulationOutput)
+plot(simulationOutput, quantreg = TRUE)
+
+testZeroInflation(simulationOutput)
+
+
+# Check residuals
+plot(residuals(m_beta2))
+qqnorm(residuals(m_beta2))
+qqline(residuals(m_beta2))
+```
+
+Generalized Linear Mixed Model (GLMM) - random effect Population -\> good fit less complicated
+
+```{r}
+###########################################
+# 4. Generalized Linear Mixed Model (GLMM)#
+###########################################
+#----------------
+
+# Fit different GLMMs with appropriate family based on data type
+m_beta <- glmmTMB(rel.cc ~ temperature + time + (1 | Population), 
+                  data = data, family = beta_family())
+
+m_beta2 <- glmmTMB(rel.cc ~ temperature * time + (1 | Population), 
+                  data = data, family = beta_family())
+
+m_beta3 <- glmmTMB(rel.cc ~ temperature + (1 | Population), 
+                  data = data, family = beta_family())
+
+# Compare models based on AIC
+aic_values <- data.frame(
+  Model = c("m_beta", "m_beta2", "m_beta3"),
+  AIC = c(AIC(m_beta), AIC(m_beta2), AIC(m_beta3))
+)
+
+# Print AIC values to determine the best model
+print(aic_values)
+
+# Identify the best model based on AIC
+best_model <- aic_values[which.min(aic_values$AIC), ]
+print(paste("The best model is:", best_model$Model, "with AIC:", best_model$AIC))
+
+# Residual diagnostics for best model 
+par(mfrow = c(1,2))  # Set up plot grid
+
+# Plot residuals for Poisson model
+residuals_best <- residuals(m_beta2, type = "pearson")
+plot(residuals_best ~ fitted(m_beta2 ), 
+     main = "Pearson Residuals vs Fitted (Beta)", xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+# Q-Q plot for residuals
+qqnorm(residuals_best)
+qqline(residuals_best, col = "red")
+
+
+# Summarize the best model (for example, if m_neg_binom is the best)
+summary(m_beta2)
+
+
+# Tidy the model output for a cleaner view of fixed and random effects
+tidy_model <- tidy(m_beta2)
+print(tidy_model)
+
+
+simulationOutput <- simulateResiduals(fittedModel = m_beta2, use.u = T)
+plot(simulationOutput)
+plot(simulationOutput, quantreg = TRUE)
+
+testZeroInflation(simulationOutput)
+
+
+# Check residuals
+plot(residuals(m_beta2))
+qqnorm(residuals(m_beta2))
+qqline(residuals(m_beta2))
+```
+
+Time series accounted for in GLMM
+
+```{r}
+# Fit the Beta GLMM model
+m_beta2 <- glmmTMB(rel.cc ~ temperature * time + (1 | PopulationPair), 
+                   data = data, family = beta_family(),
+                   control = glmmTMBControl(optimizer = optim,
+                                            optArgs = list(method = "BFGS")),
+                   dispformula = ~time)
+
+# Residual diagnostics for best model 
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2)
+
+# 1. Extract residuals
+residuals_beta <- residuals(m_beta2)
+fitted_values_beta <- fitted(m_beta2)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+par(mfrow = c(1,2))  # Set up plot grid
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, residuals_beta,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(residuals_beta, main = "Q-Q Plot of Residuals")
+qqline(residuals_beta, col = "red")
+
+# 4. Plot Residuals vs Temperature (use aligned temperature)
+plot(temperature_model, residuals_beta,
+     xlab = "Temperature",
+     ylab = "Pearson Residuals",
+     main = "Residuals vs Temperature")
+abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+plot(time_model, residuals_beta,
+     xlab = "Time",
+     ylab = "Residuals",
+     main = "Residuals vs Time")
+abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2, group = data$PopulationPair)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+
+
+summary(m_beta2)
+```
+
+Time series accounted for in GLMM - random effect Population --\> less complicated than best fit, this is the one I choose!!!
+
+```{r}
+# Fit the Beta GLMM model
+m_beta2 <- glmmTMB(rel.cc ~ temperature * time + (1 | Population), 
+                   data = data, family = beta_family(),
+                   control = glmmTMBControl(optimizer = optim,
+                                            optArgs = list(method = "BFGS")),
+                   dispformula = ~time)
+
+# Residual diagnostics for best model 
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2)
+
+# 1. Extract residuals
+residuals_beta <- residuals(m_beta2)
+fitted_values_beta <- fitted(m_beta2)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+par(mfrow = c(1,2))  # Set up plot grid
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, residuals_beta,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(residuals_beta, main = "Q-Q Plot of Residuals")
+qqline(residuals_beta, col = "red")
+
+# 4. Plot Residuals vs Temperature (use aligned temperature)
+plot(temperature_model, residuals_beta,
+     xlab = "Temperature",
+     ylab = "Pearson Residuals",
+     main = "Residuals vs Temperature")
+abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+plot(time_model, residuals_beta,
+     xlab = "Time",
+     ylab = "Residuals",
+     main = "Residuals vs Time")
+abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2, group = data$Population)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+
+
+summary(m_beta2)
+
+
+```
+
+Quadratic effect on GLMM
+
+-   <https://stats.stackexchange.com/questions/548478/how-to-interpret-meaning-of-residual-vs-predicted-quantile-plots-in-dharma?noredirect=1&lq=1>
+
+-   <https://github.com/florianhartig/DHARMa/issues/285>
+
+```{r}
+# Remove rows with missing values in the relevant columns
+clean_data <- na.omit(data[, c("rel.cc", "temperature", "time", "PopulationPair", "Population")])
+
+# Fit the Beta GLMM model with a quadratic effect for temperature
+# Including quadratic effects for temperature and time
+m_beta2_quad <- glmmTMB(rel.cc ~ poly(temperature, 2) * poly(time, 2) + (1 | PopulationPair), 
+                        data = clean_data, family = beta_family())
+
+
+AIC(m_beta2)
+AIC(m_beta2_quad) #  better than m_beta2!!!
+
+summary(m_beta2_quad)
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2_quad)
+
+# Check fitted values for NAs
+fitted_values_beta <- fitted(m_beta2_quad)
+sum(is.na(fitted_values_beta)) # Should return 0
+
+sum(is.na(data$rel.cc))
+sum(is.infinite(data$rel.cc))
+
+# 1. Extract residuals
+residuals_beta <- residuals(m_beta2)
+fitted_values_beta <- fitted(m_beta2)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+par(mfrow = c(1,2))  # Set up plot grid
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, residuals_beta,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(residuals_beta, main = "Q-Q Plot of Residuals")
+qqline(residuals_beta, col = "red")
+
+## 4. Plot Residuals vs Temperature (use aligned temperature)
+#plot(temperature_model, residuals_beta,
+#     xlab = "Temperature",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Temperature")
+#abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+#plot(time_model, residuals_beta,
+#     xlab = "Time",
+#     ylab = "Residuals",
+#     main = "Residuals vs Time")
+#abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2, group = data$PopulationPair)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+
+
+
+```
+
+Quadratic effect on GLMM - Population as random effect
+
+-   <https://stats.stackexchange.com/questions/548478/how-to-interpret-meaning-of-residual-vs-predicted-quantile-plots-in-dharma?noredirect=1&lq=1>
+
+-   <https://github.com/florianhartig/DHARMa/issues/285>
+
+```{r}
+# Remove rows with missing values in the relevant columns
+clean_data <- na.omit(data[, c("rel.cc", "temperature", "time", "PopulationPair", "Population")])
+
+# Fit the Beta GLMM model with a quadratic effect for temperature
+# Including quadratic effects for temperature and time
+m_beta2_quad <- glmmTMB(rel.cc ~ poly(temperature, 2) * poly(time, 2) + (1 | Population), 
+                        data = clean_data, family = beta_family())
+
+
+AIC(m_beta2)
+AIC(m_beta2_quad) #  better than m_beta2!!!
+
+summary(m_beta2_quad)
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2_quad)
+
+# Check fitted values for NAs
+fitted_values_beta <- fitted(m_beta2_quad)
+sum(is.na(fitted_values_beta)) # Should return 0
+
+sum(is.na(data$rel.cc))
+sum(is.infinite(data$rel.cc))
+
+# 1. Extract residuals
+residuals_beta <- residuals(m_beta2)
+fitted_values_beta <- fitted(m_beta2)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+par(mfrow = c(1,2))  # Set up plot grid
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, residuals_beta,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(residuals_beta, main = "Q-Q Plot of Residuals")
+qqline(residuals_beta, col = "red")
+
+## 4. Plot Residuals vs Temperature (use aligned temperature)
+#plot(temperature_model, residuals_beta,
+#     xlab = "Temperature",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Temperature")
+#abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+#plot(time_model, residuals_beta,
+#     xlab = "Time",
+#     ylab = "Residuals",
+#     main = "Residuals vs Time")
+#abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2, group = data$Population)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+
+
+
+```
+
+Quadratic effect on GLMM and accounting for time series --\> best fit
+
+```{r}
+# Remove rows with missing values in the relevant columns
+clean_data <- na.omit(data[, c("rel.cc", "temperature", "time", "PopulationPair", "Population")])
+
+# Fit the Beta GLMM model with a quadratic effect for temperature
+# Including quadratic effects for temperature and time
+m_beta2_quad <- glmmTMB(rel.cc ~ poly(temperature, 2) * poly(time, 2) + (1 | PopulationPair), 
+                 data = clean_data, family = beta_family(),
+                 control = glmmTMBControl(optimizer = optim,
+                                          optArgs = list(method = "BFGS")),
+                 dispformula = ~time)
+
+AIC(m_beta2)
+AIC(m_beta2_quad) #  better than m_beta2!!!
+
+summary(m_beta2_quad)
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2_quad)
+
+# Check fitted values for NAs
+fitted_values_beta <- fitted(m_beta2_quad)
+sum(is.na(fitted_values_beta)) # Should return 0
+
+sum(is.na(data$rel.cc))
+sum(is.infinite(data$rel.cc))
+
+# 1. Extract Pearson residuals
+residuals_beta <- residuals(m_beta2_quad, type = "pearson")
+manual_residuals <- clean_data$rel.cc - fitted(m_beta2_quad)
+print(manual_residuals)
+
+fitted_values_beta <- fitted(m_beta2_quad)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, manual_residuals,
+     xlab = "Fitted Values",
+     ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(manual_residuals, main = "Q-Q Plot of Residuals")
+qqline(manual_residuals, col = "red")
+
+# 4. Plot Residuals vs Temperature (use aligned temperature)
+#plot(temperature_model, manual_residuals,
+#     xlab = "Temperature",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Temperature")
+#abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+#plot(time_model, manual_residuals,
+#     xlab = "Time",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Time")
+#abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2_quad)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2_quad, group = data$Population)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+```
+
+Quadratic effect on GLMM and accounting for time series accounting for Population
+
+```{r}
+# Remove rows with missing values in the relevant columns
+clean_data <- na.omit(data[, c("rel.cc", "temperature", "time", "PopulationPair", "Population")])
+
+# Fit the Beta GLMM model with a quadratic effect for temperature
+# Including quadratic effects for temperature and time
+m_beta2_quad <- glmmTMB(rel.cc ~ poly(temperature, 2) * poly(time, 2) + (1 | Population), 
+                 data = clean_data, family = beta_family(),
+                 control = glmmTMBControl(optimizer = optim,
+                                          optArgs = list(method = "BFGS")),
+                 dispformula = ~time)
+
+AIC(m_beta2)
+AIC(m_beta2_quad) #  better than m_beta2!!!
+
+summary(m_beta2_quad)
+
+# Extract model data (rows used in the model)
+model_data <- model.frame(m_beta2_quad)
+
+# Check fitted values for NAs
+fitted_values_beta <- fitted(m_beta2_quad)
+sum(is.na(fitted_values_beta)) # Should return 0
+
+sum(is.na(data$rel.cc))
+sum(is.infinite(data$rel.cc))
+
+# 1. Extract Pearson residuals
+residuals_beta <- residuals(m_beta2_quad, type = "pearson")
+manual_residuals <- clean_data$rel.cc - fitted(m_beta2_quad)
+print(manual_residuals)
+
+fitted_values_beta <- fitted(m_beta2_quad)
+
+# Ensure temperature and time align with the residuals
+temperature_model <- model_data$temperature
+time_model <- model_data$time
+
+par(mfrow = c(1,2))  # Set up plot grid
+# 2. Plot Residuals vs Fitted Values
+plot(fitted_values_beta, manual_residuals,
+     xlab = "Fitted Values",
+     ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red")
+
+# 3. Create a Q-Q plot for residuals
+qqnorm(manual_residuals, main = "Q-Q Plot of Residuals")
+qqline(manual_residuals, col = "red")
+
+# 4. Plot Residuals vs Temperature (use aligned temperature)
+#plot(temperature_model, manual_residuals,
+#     xlab = "Temperature",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Temperature")
+#abline(h = 0, col = "red")
+
+# 5. Plot Residuals vs Time (use aligned time)
+#plot(time_model, manual_residuals,
+#     xlab = "Time",
+#     ylab = "Pearson Residuals",
+#     main = "Residuals vs Time")
+#abline(h = 0, col = "red")
+
+# 6. Use DHARMa for residual diagnostics
+# Simulate residuals using DHARMa
+sim_res <- simulateResiduals(fittedModel = m_beta2_quad)
+sim_res2 <- simulateResiduals(fittedModel = m_beta2_quad, group = data$Population)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+plot(sim_res, quantreg = FALSE)
+
+plot(sim_res2)
+plot(sim_res2, quantreg = FALSE)
+
+# get residuals that are outside the simulation envelope
+outliers(sim_res)
+outliers(sim_res2)
+```
+
+ALternatives to GLMM
+
+```{r eval=FALSE, include=FALSE}
+# Using mgcv::gam for non-linear relationships
+
+# Ensure PopulationPair is treated as a factor
+data$PopulationPair <- as.factor(data$PopulationPair)
+
+# Fit the GAM model with the beta family (logit link) and random effect
+m_gam <- gam(rel.cc ~ s(temperature, k = 4) + s(time, k = 4) + s(PopulationPair, bs = "re"),
+             family = betar(link = "logit"), data = data)
+
+# Summary of the model
+summary(m_gam)
+
+# Diagnostic plots for the model
+par(mfrow = c(2, 2))
+gam.check(m_gam)
+
+# Fit the previous GLMMTMB model to get the AIC value for comparison
+m_beta2_quad <- glmmTMB(rel.cc ~ poly(temperature, 2) * poly(time, 2) + (1 | PopulationPair), 
+                        data = clean_data, family = beta_family())
+# Get AIC of the GLMMTMB model
+aic_glmm <- AIC(m_beta2_quad)
+
+# Fit a Generalized Additive Mixed Model (GAMM)
+m_gamm <- gamm(rel.cc ~ s(temperature, k = 4) + s(time, k = 4), 
+               random = list(PopulationPair = ~1), 
+               family = gaussian(), 
+               data = clean_data)
+
+# Summarize the GAMM model
+summary(m_gamm)
+
+# Extract AIC for the GAM component
+aic_gamm <- AIC(m_gamm$lme)
+
+# Print the AIC
+print(aic_gamm)
+
+# Compare AIC values
+cat("AIC of GLMMTMB model: ", aic_glmm, "\n")
+cat("AIC of GAMM model: ", aic_gamm, "\n")
+
+# Check for overfitting by visualizing the smooth terms
+par(mfrow = c(1,2))  # Set up plotting area for two plots
+plot(m_gamm$lme, pages = 1)  # Plot smooth terms
+
+# Check residuals for GAMM
+residuals_gamm <- residuals(m_gamm$lme)
+fitted_values_gamm <- fitted(m_gamm$lme)
+
+# Plot Residuals vs Fitted Values for GAMM
+plot(fitted_values_gamm, residuals_gamm,
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Residuals vs Fitted Plot for GAMM")
+abline(h = 0, col = "red")
+
+# Q-Q plot for residuals
+qqnorm(residuals_gamm, main = "Q-Q Plot of Residuals for GAMM")
+qqline(residuals_gamm, col = "red")
+
+# Evaluate overfitting by checking if the residuals appear randomly scattered
+# and if the fitted values adequately represent the data.
+
+
+# Access the lme component
+lme_summary <- summary(m_gamm$lme)
+print(lme_summary)
+
+# Access the gam component
+gam_summary <- summary(m_gamm$gam)
+print(gam_summary)
+
+# Extract AIC from the GAM component
+aic_gamm <- AIC(m_gamm$gam)
+print(aic_gamm)
+
+
+# Simulate residuals using DHARMa
+#sim_res <- simulateResiduals(fittedModel = m_gamm$lme)
+#sim_res2 <- simulateResiduals(fittedModel = m_beta2_quad, group = data$PopulationPair)
+
+# 7. Plot DHARMa diagnostic plots
+plot(sim_res)
+
+
+
+library(brms)
+#model <- brm(
+#  rel.cc ~ s(temperature) + s(time) + (1 | PopulationPair),
+#  family = Beta(),
+#  data = clean_data,
+#  autocor = cor_ar(~time | PopulationPair, p = 1) # Correct placement of autocorrelation
+#)
+duplicated_times <- any(duplicated(clean_data[, c("PopulationPair", "time")]))
+if (duplicated_times) {
+  print("There are duplicate time points within groups.")
+}
+
+
+# Check for colinearity
+library(car)
+vif(lm(rel.cc ~ temperature * time, data = data))
+# there are higher-order terms (interactions) in this model
+
+
+data$temperature_centered <- scale(data$temperature, center = TRUE, scale = FALSE)
+data$time_centered <- scale(data$time, center = TRUE, scale = FALSE)
+
+vif(lm(rel.cc ~ temperature_centered * time_centered, data = data))
+
+# Example using mgcv package for regularization
+m_gam <- gam(rel.cc ~ s(temperature, k = 4) + s(time, k = 4) + s(PopulationPair, bs = "re"),
+             data = data, family = betar(link = "logit"))
+
+summary(m_gam)
+
+```
